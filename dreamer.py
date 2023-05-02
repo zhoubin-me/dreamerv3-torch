@@ -209,6 +209,15 @@ def make_env(config, logger, mode, train_eps, eval_eps):
             task, mode if "train" in mode else "test", config.action_repeat
         )
         env = wrappers.OneHotAction(env)
+    elif suite == 'hb':
+        from envs.homebench_env import HomeBenchEnv
+        if task == 'ReachTarget':
+            task = 'HomeBenchExample.ReachTarget'
+        elif task == 'Garment':
+            task = 'RLLGarment.GarmentV1'
+        else:
+            raise NotImplementedError(suite, task)
+        env = HomeBenchEnv(task, config.action_repeat, config.size)
     else:
         raise NotImplementedError(suite)
     env = wrappers.TimeLimit(env, config.time_limit)

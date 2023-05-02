@@ -13,7 +13,12 @@ TASK_LIST = [
 class HomeBenchEnv:
     def __init__(self, task, action_repeat=1, size=(64, 64), camera=None):
         assert task in TASK_LIST, task
-        hb_env = HomeBench(task, DeltaJointPosition(), episode_steps=200)
+        if task == 'RLLGarment.GarmentV1':
+            max_steps = 1000
+            print(max_steps)
+        else:
+            max_steps = 200
+        hb_env = HomeBench(task, DeltaJointPosition(), episode_steps=max_steps)
         self._env = hb_env
         self._action_repeat = action_repeat
 
@@ -49,6 +54,8 @@ class HomeBenchEnv:
         obs = dict(time_step.observation)
         obs["image"] = self._preprocess_obs(obs['rgbWrist'])
         del obs['rgbWrist']
+        del obs['rgbLeftShoulder']
+        del obs['rgbRightShoulder']
         # There is no terminal state in DMC
         obs["is_terminal"] = False if time_step.first() else time_step.discount == 0
         obs["is_first"] = time_step.first()
@@ -61,6 +68,8 @@ class HomeBenchEnv:
         obs = dict(time_step.observation)
         obs["image"] = self._preprocess_obs(obs['rgbWrist'])
         del obs['rgbWrist']
+        del obs['rgbLeftShoulder']
+        del obs['rgbRightShoulder']
         obs["is_terminal"] = False if time_step.first() else time_step.discount == 0
         obs["is_first"] = time_step.first()
         return obs

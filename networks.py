@@ -327,7 +327,7 @@ class RSSM(nn.Module):
         return loss, value, dyn_loss, rep_loss
 
 
-class ConvEncoder(nn.Module):
+class MultiEncoder(nn.Module):
     def __init__(
         self,
         grayscale=False,
@@ -335,12 +335,19 @@ class ConvEncoder(nn.Module):
         act=nn.ELU,
         norm=nn.LayerNorm,
         kernels=(3, 3, 3, 3),
+        vec_dim=17,
+        mlp_layers=5,
+        mlp_units=1024,
+        emb_size=4096,
     ):
-        super(ConvEncoder, self).__init__()
+        super(MultiEncoder, self).__init__()
         self._act = act
         self._norm = norm
         self._depth = depth
         self._kernels = kernels
+        self._vec_dim = vec_dim
+        self._emb_size = emb_size
+        self._mlp_units = mlp_units
         h, w = 64, 64
         layers = []
         for i, kernel in enumerate(self._kernels):
@@ -365,20 +372,44 @@ class ConvEncoder(nn.Module):
             layers.append(act())
             h, w = h // 2, w // 2
 
-        self.layers = nn.Sequential(*layers)
-        self.layers.apply(tools.weight_init)
+        self.img_layers = nn.Sequential(*layers)
+        self.img_layers.apply(tools.weight_init)
+
+        layers = []
+        for i in range(mlp_layers):
+            in_dim = vec_dim if i == 0 else mlp_units
+            layers.append(nn.Linear(in_dim, mlp_units))
+            layers.append(nn.InstanceNorm1d(mlp_units))
+            layers.append(act())
+
+        self.vec_layers = nn.Sequential(*layers)
+        self.vec_layers.apply(tools.weight_init)
+        
+        self.last_layer = nn.Linear(5120, 4096)
+        self.last_layer.apply(tools.weight_init)
+
 
     def __call__(self, obs):
         x = obs["image"].reshape((-1,) + tuple(obs["image"].shape[-3:]))
         x = x.permute(0, 3, 1, 2)
-        x = self.layers(x)
-        # prod: product of all elements
-        x = x.reshape([x.shape[0], np.prod(x.shape[1:])])
-        shape = list(obs["image"].shape[:-3]) + [x.shape[-1]]
-        return x.reshape(shape)
+        x = self.img_layers(x)
+        img_emb = x.reshape([x.shape[0], np.prod(x.shape[1:])])
+        # shape = list(obs["image"].shape[:-3]) + [x.shape[-1]]
+        # img_emb = x.reshape(shape)
+
+        xs = [v for k, v in obs.items() if k.startswith('vec')]
+        x = torch.cat(xs, dim=-1).reshape(-1, self._vec_dim)
+        vec_emb = self.vec_layers(x)
+        # vec_emb = x.reshape(obs["image"].shape[:-3], self._mlp_units)
+        emb = torch.cat([img_emb, vec_emb], dim=-1)
+        emb = self.last_layer(emb)
+        shape = list(obs["image"].shape[:-3]) + [self._emb_size]
+        emb = emb.reshape(shape)
+        return emb
 
 
-class ConvDecoder(nn.Module):
+
+class MultiDecoder(nn.Module):
     def __init__(
         self,
         inp_depth,
@@ -388,14 +419,18 @@ class ConvDecoder(nn.Module):
         shape=(3, 64, 64),
         kernels=(3, 3, 3, 3),
         outscale=1.0,
+        vec_dim=17,
+        mlp_layers=5,
+        mlp_units=1024,
     ):
-        super(ConvDecoder, self).__init__()
+        super(MultiDecoder, self).__init__()
         self._inp_depth = inp_depth
         self._act = act
         self._norm = norm
         self._depth = depth
         self._shape = shape
         self._kernels = kernels
+        self._vec_dim = vec_dim
         self._embed_size = (
             (64 // 2 ** (len(kernels))) ** 2 * depth * 2 ** (len(kernels) - 1)
         )
@@ -439,7 +474,18 @@ class ConvDecoder(nn.Module):
             [m.apply(initializer) for m in layers[-3:]]
             h, w = h * 2, w * 2
 
-        self.layers = nn.Sequential(*layers)
+        self.img_layers = nn.Sequential(*layers)
+
+        layers = []
+        for i in range(mlp_layers):
+            in_dim = inp_depth if i == 0 else mlp_units
+            out_dim = vec_dim if i == mlp_layers - 1 else mlp_units
+            layers.append(nn.Linear(in_dim, out_dim))
+            if i != mlp_layers - 1:
+                layers.append(nn.InstanceNorm1d(out_dim))
+                layers.append(self._act())
+        self.vec_layers = nn.Sequential(*layers)
+        self.vec_layers.apply(tools.weight_init)
 
     def calc_same_pad(self, k, s, d):
         val = d * (k - 1) - s + 1
@@ -451,10 +497,14 @@ class ConvDecoder(nn.Module):
         x = self._linear_layer(features)
         x = x.reshape([-1, 4, 4, self._embed_size // 16])
         x = x.permute(0, 3, 1, 2)
-        x = self.layers(x)
-        mean = x.reshape(features.shape[:-1] + self._shape)
-        mean = mean.permute(0, 1, 3, 4, 2)
-        return tools.SymlogDist(mean)
+        x = self.img_layers(x)
+        img_mean = x.reshape(features.shape[:-1] + self._shape)
+        img_mean = img_mean.permute(0, 1, 3, 4, 2)
+        
+        x = self.vec_layers(features)
+        vec_mean = x.reshape(features.shape[:-1] + (self._vec_dim,))
+
+        return tools.SymlogDist(img_mean), tools.SymlogDist(vec_mean)
 
 
 class DenseHead(nn.Module):

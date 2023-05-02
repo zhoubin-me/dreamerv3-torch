@@ -34,7 +34,7 @@ class WorldModel(nn.Module):
         self._step = step
         self._use_amp = True if config.precision == 16 else False
         self._config = config
-        self.encoder = networks.ConvEncoder(
+        self.encoder = networks.MultiEncoder(
             config.grayscale,
             config.cnn_depth,
             config.act,
@@ -78,7 +78,7 @@ class WorldModel(nn.Module):
             feat_size = config.dyn_stoch * config.dyn_discrete + config.dyn_deter
         else:
             feat_size = config.dyn_stoch + config.dyn_deter
-        self.heads["image"] = networks.ConvDecoder(
+        self.heads["image"] = networks.MultiDecoder(
             feat_size,  # pytorch version
             config.cnn_depth,
             config.act,
@@ -160,9 +160,20 @@ class WorldModel(nn.Module):
                     feat = self.dynamics.get_feat(post)
                     feat = feat if grad_head else feat.detach()
                     pred = head(feat)
-                    like = pred.log_prob(data[name])
-                    likes[name] = like
-                    losses[name] = -torch.mean(like) * self._scales.get(name, 1.0)
+                    if name == 'image':
+                        img_data = data['image']
+                        vec_data = torch.cat([v for k, v in data.items() if k.startswith('vec')], dim=-1)
+                        img_dist, vec_dist = pred
+                        img_like = img_dist.log_prob(img_data)
+                        vec_like = vec_dist.log_prob(vec_data)
+                        likes['image'] = img_like
+                        likes['vec'] = vec_like
+                        losses['image'] = -torch.mean(img_like) * self._scales.get(name, 1.0)
+                        losses['vec'] = -torch.mean(vec_like) * self._scales.get(name, 1.0)
+                    else:
+                        like = pred.log_prob(data[name])
+                        likes[name] = like
+                        losses[name] = -torch.mean(like) * self._scales.get(name, 1.0)
                 model_loss = sum(losses.values()) + kl_loss
             metrics = self._model_opt(model_loss, self.parameters())
 
@@ -213,11 +224,12 @@ class WorldModel(nn.Module):
         states, _ = self.dynamics.observe(
             embed[:6, :5], data["action"][:6, :5], data["is_first"][:6, :5]
         )
-        recon = self.heads["image"](self.dynamics.get_feat(states)).mode()[:6]
+        
+        recon = self.heads["image"](self.dynamics.get_feat(states))[0].mode()[:6]
         reward_post = self.heads["reward"](self.dynamics.get_feat(states)).mode()[:6]
         init = {k: v[:, -1] for k, v in states.items()}
         prior = self.dynamics.imagine(data["action"][:6, 5:], init)
-        openl = self.heads["image"](self.dynamics.get_feat(prior)).mode()
+        openl = self.heads["image"](self.dynamics.get_feat(prior))[0].mode()
         reward_prior = self.heads["reward"](self.dynamics.get_feat(prior)).mode()
         # observed image is given until 5 steps
         model = torch.cat([recon[:, :5], openl], 1)

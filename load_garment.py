@@ -2,6 +2,7 @@ import glob
 import numpy as np
 import pickle
 from tqdm import tqdm
+import cv2
 
 NUM_EPS = 60
 NUM_STEPS = 600
@@ -27,12 +28,14 @@ for eps in tqdm(range(1, NUM_EPS+1)):
     eps_data = list(zip(*transitions))
     eps_data_dict = {}
     for k, v in zip(keys, eps_data):
-        v = np.stack(v, axis=0)
-        if len(v.shape) == 4:
-            v = v.transpose(0, 2, 3, 1)
+        if len(v[0].shape) == 3:
+            v = [cv2.resize(x.transpose(1, 2, 0), (64, 64)) for x in v]
+        v = np.stack(v, axis=0).squeeze()
+        if k == 'vecGripperOpenAmount':
+            v = np.expand_dims(v, axis=-1)
         eps_data_dict[k] = v.squeeze()
+
     eps_data_dict['image'] = eps_data_dict['rgbWrist']
     del eps_data_dict['rgbWrist']
     with open(f'demo_data_eps/eps_{eps:03d}-{MAX_STEP}.npz', 'wb') as f:
         np.savez(f, **eps_data_dict)
-    

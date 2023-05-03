@@ -24,10 +24,11 @@ class DeepMindControl:
     def observation_space(self):
         spaces = {}
         for key, value in self._env.observation_spec().items():
+            v_shape = value.shape
             if len(value.shape) <= 1:
                 key = 'vec' + key
                 if len(value.shape) == 0:
-                    value = (1,)
+                    v_shape = (1,)
             spaces[key] = gym.spaces.Box(-np.inf, np.inf, value.shape, dtype=np.float32)
         spaces["image"] = gym.spaces.Box(0, 255, self._size + (3,), dtype=np.uint8)
         return gym.spaces.Dict(spaces)

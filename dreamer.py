@@ -351,7 +351,7 @@ def main(config):
         def random_agent(o, d, s, r):
             action = random_actor.sample()
             logprob = random_actor.log_prob(action)
-            return {"action": action, "logprob": logprob}, None
+            return {"action": action}, None # , "logprob": logprob}, None
 
         tools.simulate(random_agent, train_envs, prefill)
         logger.step = config.action_repeat * count_steps(config.traindir)

@@ -27,6 +27,8 @@ defaults:
   prefill: 2500
   eval_noise: 0.0
   reward_EMA: True
+  vec_dim: 10
+  img_chan: 3
 
   # Model
   dyn_cell: 'gru_layer_norm'

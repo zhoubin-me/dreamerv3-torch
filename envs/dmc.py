@@ -24,6 +24,10 @@ class DeepMindControl:
     def observation_space(self):
         spaces = {}
         for key, value in self._env.observation_spec().items():
+            if len(value.shape) <= 1:
+                key = 'vec' + key
+                if len(value.shape) == 0:
+                    value = (1,)
             spaces[key] = gym.spaces.Box(-np.inf, np.inf, value.shape, dtype=np.float32)
         spaces["image"] = gym.spaces.Box(0, 255, self._size + (3,), dtype=np.uint8)
         return gym.spaces.Dict(spaces)
@@ -41,7 +45,13 @@ class DeepMindControl:
             reward += time_step.reward or 0
             if time_step.last():
                 break
-        obs = dict(time_step.observation)
+        obs_ = dict(time_step.observation)
+        obs = {}
+        for k, v in obs_.items():
+            if len(v.shape) <= 1:
+                if len(v.shape) == 0:
+                    v = np.array([v])
+                obs['vec' + k] = v
         obs["image"] = self.render()
         # There is no terminal state in DMC
         obs["is_terminal"] = False if time_step.first() else time_step.discount == 0
@@ -52,7 +62,13 @@ class DeepMindControl:
 
     def reset(self):
         time_step = self._env.reset()
-        obs = dict(time_step.observation)
+        obs_ = dict(time_step.observation)
+        obs = {}
+        for k, v in obs_.items():
+            if len(v.shape) <= 1:
+                if len(v.shape) == 0:
+                    v = np.array([v])
+                obs['vec' + k] = v
         obs["image"] = self.render()
         obs["is_terminal"] = False if time_step.first() else time_step.discount == 0
         obs["is_first"] = time_step.first()

@@ -33,7 +33,10 @@ for eps in tqdm(range(1, NUM_EPS+1)):
         v = np.stack(v, axis=0).squeeze()
         if k == 'vecGripperOpenAmount':
             v = np.expand_dims(v, axis=-1)
-        eps_data_dict[k] = v.squeeze()
+        eps_data_dict[k] = v
+
+    for k, v in eps_data_dict.items():
+        print(k, v.shape)
 
     eps_data_dict['image'] = eps_data_dict['rgbWrist']
     del eps_data_dict['rgbWrist']

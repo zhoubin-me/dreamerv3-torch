@@ -33,6 +33,9 @@ class WorldModel(nn.Module):
         super(WorldModel, self).__init__()
         self._step = step
         self._use_amp = True if config.precision == 16 else False
+
+        vec_dim = config.vec_dim
+
         self._config = config
         self.encoder = networks.MultiEncoder(
             config.grayscale,
@@ -40,6 +43,7 @@ class WorldModel(nn.Module):
             config.act,
             config.norm,
             config.encoder_kernels,
+            vec_dim=vec_dim
         )
         if config.size[0] == 64 and config.size[1] == 64:
             embed_size = (
@@ -85,6 +89,7 @@ class WorldModel(nn.Module):
             config.norm,
             shape,
             config.decoder_kernels,
+            vec_dim=vec_dim
         )
         if config.reward_head == "twohot_symlog":
             self.heads["reward"] = networks.DenseHead(

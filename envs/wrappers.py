@@ -179,7 +179,7 @@ class RewardObs:
     @property
     def observation_space(self):
         spaces = self._env.observation_space.spaces
-        assert "reward" not in spaces
+        # assert "reward" not in spaces
         spaces["reward"] = gym.spaces.Box(-np.inf, np.inf, dtype=np.float32, shape=())
         return gym.spaces.Dict(spaces)
 

@@ -29,7 +29,7 @@ class DeepMindControl:
                 key = 'vec' + key
                 if len(value.shape) == 0:
                     v_shape = (1,)
-            spaces[key] = gym.spaces.Box(-np.inf, np.inf, value.shape, dtype=np.float32)
+            spaces[key] = gym.spaces.Box(-np.inf, np.inf, v_shape, dtype=np.float32)
         spaces["image"] = gym.spaces.Box(0, 255, self._size + (3,), dtype=np.uint8)
         return gym.spaces.Dict(spaces)
 

@@ -20,6 +20,7 @@ import envs.wrappers as wrappers
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch import distributions as torchd
 
 
@@ -330,7 +331,7 @@ def main(config):
     train_envs = [make("train") for _ in range(config.envs)]
     eval_envs = [make("eval") for _ in range(config.envs)]
     acts = train_envs[0].action_space
-    vec_dim = sum([len(v.shape) for k, v in train_envs[0].observation_space.spaces.items() if k.startswith('vec')])
+    vec_dim = sum([v.shape[-1] for k, v in train_envs[0].observation_space.spaces.items() if k.startswith('vec')])
     img_chan = sum([v.shape[-1] for k, v in train_envs[0].observation_space.spaces.items() if len(v.shape) == 3])
 
     config.num_actions = acts.n if hasattr(acts, "n") else acts.shape[0]

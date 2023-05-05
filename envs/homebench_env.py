@@ -1,5 +1,5 @@
 from homebench import HomeBench
-from homebench.action_modes.joint_position import DeltaJointPosition, DeltaJointPositionWithGripperOpenAmount
+from homebench.action_modes.joint_position import DeltaJointPosition, DeltaJointPositionWithGripperOpenAmount, JointPosition
 import gym
 import numpy as np
 import functools
@@ -18,6 +18,7 @@ class HomeBenchEnv:
         else:
             max_steps = 200
         hb_env = HomeBench(task, DeltaJointPositionWithGripperOpenAmount(low=-1.0, high=1.0), episode_steps=max_steps)
+        # hb_env = HomeBench(task, JointPosition(), episode_steps=max_steps)
         self._env = hb_env
         self._action_repeat = action_repeat
 
@@ -44,9 +45,9 @@ class HomeBenchEnv:
 
     def step(self, action):
         assert np.isfinite(action).all(), action
+        action[-1] = np.clip(action[-1], 0, 1)
+        action[:-1] = action[:-1] / 10
         reward = 0
-        if len(action) == 8:
-            action[-1] = 1.0 / (1.0 + np.exp(-action[-1]))
         for _ in range(self._action_repeat):
             time_step = self._env.step([action])[0]
             reward += time_step.reward or 0

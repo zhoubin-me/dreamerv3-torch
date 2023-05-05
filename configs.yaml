@@ -24,7 +24,7 @@ defaults:
   action_repeat: 1
   time_limit: 10000
   grayscale: False
-  prefill: 2500
+  prefill: 37000
   eval_noise: 0.0
   reward_EMA: True
   vec_dim: 10
@@ -71,7 +71,7 @@ defaults:
   batch_size: 16
   batch_length: 64
   train_ratio: 512
-  pretrain: 100
+  pretrain: 3000
   model_lr: 1e-4
   opt_eps: 1e-8
   grad_clip: 1000

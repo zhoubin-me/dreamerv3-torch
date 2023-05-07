@@ -318,6 +318,47 @@ class ImagBehavior(nn.Module):
         )
         if self._config.reward_EMA:
             self.reward_ema = RewardEMA(device=self._config.device)
+    
+    def _train_bc(        
+        self,
+        start,
+        objective=None,
+        action=None,
+        reward=None,
+        imagine=None,
+        tape=None,
+        repeats=None,
+        actual_action=None,
+    ):
+        objective = objective or self._reward
+        self._update_slow_target()
+        metrics = {}
+
+        with tools.RequiresGrad(self.actor):
+            with torch.cuda.amp.autocast(self._use_amp):
+                imag_feat, imag_state, imag_action = self._imagine(
+                    start, self.actor, self._config.imag_horizon, repeats
+                )
+                reward = objective(imag_feat, imag_state, imag_action)
+                actor_ent = self.actor(imag_feat).entropy()
+                state_ent = self._world_model.dynamics.get_dist(imag_state).entropy()
+                # this target is not scaled
+                # slow is flag to indicate whether slow_target is used for lambda-return
+                target, weights, base = self._compute_target(
+                    imag_feat, imag_state, imag_action, reward, actor_ent, state_ent
+                )
+                actor_loss, mets = self._compute_actor_loss(
+                    imag_feat,
+                    imag_state,
+                    imag_action,
+                    target,
+                    actor_ent,
+                    state_ent,
+                    weights,
+                    base,
+                )
+                metrics.update(mets)
+                value_input = imag_feat
 
     def _train(
         self,
@@ -487,6 +528,8 @@ class ImagBehavior(nn.Module):
             mix = self._config.imag_gradient_mix()
             actor_target = mix * target + (1 - mix) * actor_target
             metrics["imag_gradient_mix"] = mix
+        elif self._config.imag_gradient == 'mse':
+            pass
         else:
             raise NotImplementedError(self._config.imag_gradient)
         if not self._config.future_entropy and (self._config.actor_entropy() > 0):

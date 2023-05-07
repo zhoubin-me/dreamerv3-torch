@@ -36,9 +36,9 @@ for data in datas:
         if isinstance(v, list):
             new_data[k] = np.stack(new_data[k], axis=0)
 
-    fname = data.split('/')[-1]
-    with open(os.path.join(f'demo_data_deltajoint/{fname}'), 'wb') as f:
-        np.savez(f, **new_data)
+    # fname = data.split('/')[-1]
+    # with open(os.path.join(f'demo_data_deltajoint/{fname}'), 'wb') as f:
+    #     np.savez(f, **new_data)
 
     # print(delta_action)
     # import pdb; pdb.set_trace()

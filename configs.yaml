@@ -69,7 +69,7 @@ defaults:
 
   # Training
   batch_size: 16
-  batch_length: 64
+  batch_length: 256
   train_ratio: 512
   pretrain: 3000
   model_lr: 1e-4

@@ -148,7 +148,7 @@ class Dreamer(nn.Module):
             probs = amount / self._config.num_actions + (1 - amount) * action
             return tools.OneHotDist(probs=probs).sample()
         else:
-            return torch.clip(torchd.normal.Normal(action, amount).sample(), -1, 1)
+            return torchd.normal.Normal(action, amount).sample()
         raise NotImplementedError(self._config.action_noise)
 
     def _train(self, data):

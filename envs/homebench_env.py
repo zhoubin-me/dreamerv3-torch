@@ -11,13 +11,20 @@ TASK_LIST = [
 ]
 
 class HomeBenchEnv:
-    def __init__(self, task, action_repeat=1, size=(64, 64), camera=None):
+    def __init__(self, task, action_repeat=1, size=(64, 64), action_mode='joint_position'):
         assert task in TASK_LIST, task
         if task == 'RLLGarment.GarmentV1':
             max_steps = 1000
         else:
             max_steps = 200
-        hb_env = HomeBench(task, DeltaJointPositionWithGripperOpenAmount(low=-1.0, high=1.0), episode_steps=max_steps)
+        if action_mode == 'delta_joint_with_gripper':
+            hb_env = HomeBench(task, DeltaJointPositionWithGripperOpenAmount(low=-1.0, high=1.0), episode_steps=max_steps)
+        elif action_mode == 'joint_position':
+            hb_env = HomeBench(task, JointPosition(), episode_steps=max_steps)
+        elif action_mode == 'delta_joint_position':
+            hb_env = HomeBench(task, DeltaJointPosition(), episode_steps=max_steps)
+        else:
+            raise ValueError(f"No such action mode{action_mode}")
         # hb_env = HomeBench(task, JointPosition(), episode_steps=max_steps)
         self._env = hb_env
         self._action_repeat = action_repeat
@@ -45,8 +52,6 @@ class HomeBenchEnv:
 
     def step(self, action):
         assert np.isfinite(action).all(), action
-        action[-1] = np.clip(action[-1], 0, 1)
-        action[:-1] = action[:-1] / 10
         reward = 0
         for _ in range(self._action_repeat):
             time_step = self._env.step([action])[0]

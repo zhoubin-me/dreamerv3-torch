@@ -39,10 +39,10 @@ for eps in tqdm(range(1, NUM_EPS+1)):
         print(k, v.shape)
 
     eps_data_dict['image'] = eps_data_dict['rgbWrist']
-    action = eps_data_dict['action']
-    action = action[:, :-1]
-    action[:, -1] = 1.0 / (1.0 + np.exp(-action[:, -1]))
-    eps_data_dict['action'] = eps_data_dict['action'][:, :-1]
+    # action = eps_data_dict['action']
+    # action = action[:, :-1]
+    # action[:, -1] = 1.0 / (1.0 + np.exp(-action[:, -1]))
+    # eps_data_dict['action'] = eps_data_dict['action'][:, :-1]
     del eps_data_dict['rgbWrist']
     with open(f'demo_data_eps/eps_{eps:03d}-{MAX_STEP}.npz', 'wb') as f:
         np.savez(f, **eps_data_dict)

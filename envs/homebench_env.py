@@ -11,7 +11,7 @@ TASK_LIST = [
 ]
 
 class HomeBenchEnv:
-    def __init__(self, task, action_repeat=1, size=(64, 64), action_mode='joint_position'):
+    def __init__(self, task, action_repeat=1, size=(64, 64), action_mode='delta_joint_with_gripper'):
         assert task in TASK_LIST, task
         if task == 'RLLGarment.GarmentV1':
             max_steps = 1000
@@ -52,6 +52,8 @@ class HomeBenchEnv:
 
     def step(self, action):
         assert np.isfinite(action).all(), action
+        action = np.clip(action, -1.1, 1.1)
+        action[-1] = np.abs(action[-1])
         reward = 0
         for _ in range(self._action_repeat):
             time_step = self._env.step([action])[0]

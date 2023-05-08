@@ -17,6 +17,7 @@ class HomeBenchEnv:
             max_steps = 1000
         else:
             max_steps = 200
+        self.action_mode = action_mode
         if action_mode == 'delta_joint_with_gripper':
             hb_env = HomeBench(task, DeltaJointPositionWithGripperOpenAmount(low=-1.0, high=1.0), episode_steps=max_steps)
         elif action_mode == 'joint_position':
@@ -52,8 +53,9 @@ class HomeBenchEnv:
 
     def step(self, action):
         assert np.isfinite(action).all(), action
-        action[:-1] /= 10
-        action[-1] = np.abs(action[-1])
+        if self.action_mode == 'delta_joint_with_gripper':
+            action[:-1] /= 10
+            action[-1] = np.abs(action[-1])
         reward = 0
         for _ in range(self._action_repeat):
             time_step = self._env.step([action])[0]
@@ -71,7 +73,7 @@ class HomeBenchEnv:
         done = time_step.last()
         info = {"discount": np.array(time_step.discount, np.float32)}
         return obs, reward, done, info
-    
+
     def reset(self):
         time_step = self._env.reset()[0]
         obs = dict(time_step.observation)

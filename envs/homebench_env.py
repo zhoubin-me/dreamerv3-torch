@@ -52,7 +52,7 @@ class HomeBenchEnv:
 
     def step(self, action):
         assert np.isfinite(action).all(), action
-        action = np.clip(action, -1.1, 1.1)
+        action[:-1] /= 10
         action[-1] = np.abs(action[-1])
         reward = 0
         for _ in range(self._action_repeat):

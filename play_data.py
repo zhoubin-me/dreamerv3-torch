@@ -9,8 +9,8 @@ from tqdm import tqdm
 NUM_EPS = 60
 
 env_jp = HomeBenchEnv(task='RLLGarment.GarmentV1', action_mode='joint_position')
-env_djp = HomeBenchEnv(task='RLLGarment.GarmentV1', action_mode='delta_joint_with_gripper')
-env_djp2 = HomeBenchEnv(task='RLLGarment.GarmentV1', action_mode='delta_joint_with_gripper')
+env_djp = HomeBenchEnv(task='RLLGarment.GarmentV1', action_mode='delta_joint_with_gripper', data_mode=True)
+env_djp2 = HomeBenchEnv(task='RLLGarment.GarmentV1', action_mode='delta_joint_with_gripper', data_mode=True)
 
 for eps in tqdm(range(44, NUM_EPS+1)):
     fs = glob.glob(f'../garment_demo_save_rl_60/demo_actor_0_eps_{eps}_step*.npz')
@@ -30,7 +30,7 @@ for eps in tqdm(range(44, NUM_EPS+1)):
         is_terminal = step_type == 2
         transition = (*obs, step_data['action'], step_data['reward'], step_data['discount'], is_terminal, is_first)
         transitions.append(transition)
-    
+
     eps_data = list(zip(*transitions))
     eps_data_dict = {}
     for k, v in zip(keys, eps_data):
@@ -40,10 +40,10 @@ for eps in tqdm(range(44, NUM_EPS+1)):
         if k == 'vecGripperOpenAmount':
             v = np.expand_dims(v, axis=-1)
         eps_data_dict[k] = v
-    
+
     with open(f'demo_data_original/eps_{eps:03d}-{MAX_STEP}.npz', 'wb') as f:
         np.savez(f, **eps_data_dict)
-    
+
     keys = ['vecEEPose', 'vecGripperOpenAmount', 'vecJointPositions', 'action', 'reward', 'discount', 'is_terminal', 'is_first', 'image']
     eps_data_joint = defaultdict(list)
     obs = env_jp.reset()
@@ -88,12 +88,12 @@ for eps in tqdm(range(44, NUM_EPS+1)):
     for k, v in eps_data_joint.items():
         if isinstance(v, list):
             eps_data_joint[k] = np.stack(eps_data_joint[k], axis=0)
-    
+
     steps = len(eps_data_joint['image'])
     fname = f'eps_{eps:03d}-{steps}.npz'
     with open(os.path.join(f'demo_data_joint/{fname}'), 'wb') as f:
-        np.savez(f, **eps_data_joint)    
-    
+        np.savez(f, **eps_data_joint)
+
 
 
     obs = env_djp.reset()
@@ -120,7 +120,7 @@ for eps in tqdm(range(44, NUM_EPS+1)):
             obs = next_obs
             if done:
                 break
-    
+
     eps_data_delta = defaultdict(list)
     obs = env_djp2.reset()
     for i, delta_action in enumerate(delta_actions):
@@ -140,8 +140,8 @@ for eps in tqdm(range(44, NUM_EPS+1)):
         obs = next_obs
         if done:
             break
-    
+
     steps = len(eps_data_delta['image'])
     fname = f'eps_{eps:03d}-{steps}.npz'
     with open(os.path.join(f'demo_data_deltajoint/{fname}'), 'wb') as f:
-        np.savez(f, **eps_data_delta)   
+        np.savez(f, **eps_data_delta)

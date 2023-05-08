@@ -11,13 +11,14 @@ TASK_LIST = [
 ]
 
 class HomeBenchEnv:
-    def __init__(self, task, action_repeat=1, size=(64, 64), action_mode='delta_joint_with_gripper'):
+    def __init__(self, task, action_repeat=1, size=(64, 64), action_mode='delta_joint_with_gripper', data_mode=False):
         assert task in TASK_LIST, task
         if task == 'RLLGarment.GarmentV1':
             max_steps = 1000
         else:
             max_steps = 200
         self.action_mode = action_mode
+        self.data_mode = data_mode
         if action_mode == 'delta_joint_with_gripper':
             hb_env = HomeBench(task, DeltaJointPositionWithGripperOpenAmount(low=-1.0, high=1.0), episode_steps=max_steps)
         elif action_mode == 'joint_position':
@@ -53,7 +54,7 @@ class HomeBenchEnv:
 
     def step(self, action):
         assert np.isfinite(action).all(), action
-        if self.action_mode == 'delta_joint_with_gripper':
+        if self.action_mode == 'delta_joint_with_gripper' and not self.data_mode:
             action[:-1] /= 10
             action[-1] = np.abs(action[-1])
         reward = 0
